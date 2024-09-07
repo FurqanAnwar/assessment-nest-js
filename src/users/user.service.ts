@@ -90,19 +90,11 @@ export class UserService{
                 throw new HttpException('Invalid user id, user not found', HttpStatus.BAD_REQUEST)
             }
 
-            const deletedLogs = await this.logModel.destroy({
-                where: { userId },
-                transaction
-            });
+            await this.logModel.destroy({ where: { userId }, transaction });
 
-
-            const deletedRows = await this.userModel.destroy({
-                where: { id: userId },
-                transaction
-            });
+            await this.userModel.destroy({ where: { id: { val: userId } }, transaction });
 
             await transaction.commit();
-
             
             return { success: true, message: 'User deleted successfully'}
 
