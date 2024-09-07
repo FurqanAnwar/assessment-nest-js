@@ -1,7 +1,8 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Param } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDTO } from './dto/create.dto';
 import { ResponseDTO } from './dto/response.dto';
+import { UpdateUserDTO } from './dto/update.dto';
 
 @Controller()
 export class UserController {
@@ -10,5 +11,10 @@ export class UserController {
   @Post('auth/signup')
   signup(@Body() requestBody: CreateUserDTO): Promise<ResponseDTO> {
     return this.userService.signup(requestBody);
+  }
+
+  @Post('/users/:id')
+  updateUser(@Body() requestBody: UpdateUserDTO, @Param('id') userId: number): Promise<ResponseDTO> {
+    return this.userService.updateUser(requestBody, userId)
   }
 }
