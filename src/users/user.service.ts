@@ -92,7 +92,7 @@ export class UserService{
 
             await this.logModel.destroy({ where: { userId }, transaction });
 
-            await this.userModel.destroy({ where: { id: { val: userId } }, transaction });
+            await this.userModel.destroy({ where: { id: userId }, transaction });
 
             await transaction.commit();
             
