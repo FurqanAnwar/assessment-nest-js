@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { UserModule } from './users/user.module';
 import * as dotenv from 'dotenv';
+import { LogModule } from './logs/log.module';
 
 dotenv.config();
 
@@ -19,7 +20,8 @@ dotenv.config();
       autoLoadModels: true,
       synchronize: true
     }),
-    UserModule
+    UserModule,
+    LogModule
   ],
   controllers: [AppController],
   providers: [AppService],
