@@ -67,7 +67,7 @@ export class UserService{
             
             }
 
-            return { success: false, message: 'User is not updated', user};
+            return { success: false, message: 'No data to update for user', user};
         }catch(err){
             if (err instanceof UniqueConstraintError){
                 throw new HttpException('Email already in use, please choose a different email', HttpStatus.BAD_REQUEST)
@@ -78,6 +78,40 @@ export class UserService{
             }
 
             throw new HttpException('An unknown error occured', HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    async deleteUser(userId: number): Promise<ResponseDTO> {
+        try{
+            const transaction = await this.userModel.sequelize.transaction()
+            const user = await this.userModel.findByPk(userId, { transaction });
+
+            if(!user){
+                throw new HttpException('Invalid user id, user not found', HttpStatus.BAD_REQUEST)
+            }
+
+            const deletedLogs = await this.logModel.destroy({
+                where: { userId },
+                transaction
+            });
+
+
+            const deletedRows = await this.userModel.destroy({
+                where: { id: userId },
+                transaction
+            });
+
+            await transaction.commit();
+
+            
+            return { success: true, message: 'User deleted successfully'}
+
+        }catch(err){
+            if (err instanceof Error){
+                throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
+            }
+
+            throw new HttpException('An Unknown error occured', HttpStatus.BAD_REQUEST)
         }
     }
 }
