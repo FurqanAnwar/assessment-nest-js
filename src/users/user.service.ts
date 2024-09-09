@@ -9,6 +9,9 @@ import { ResponseDTO } from './dto/response.dto';
 import { Log } from 'src/logs/schema/log.model';
 import { LogAction } from '../logs/actions.enum';
 import { UpdateUserDTO } from './dto/update.dto';
+import { signinDTO } from './dto/signin.dto';
+import { Sessions } from 'src/sessions/schema/session.model';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class UserService{
@@ -17,8 +20,8 @@ export class UserService{
     
     async signup(requestBody: CreateUserDTO): Promise<ResponseDTO> {
         try{
-            const user = await this.userModel.create(requestBody);
-            
+        const user: User = await this.userModel.create(requestBody);
+          
             const userPlainObject = user.dataValues;
             
             await this.logModel.create({ userId: userPlainObject.id, action: LogAction.SIGNUP })
@@ -39,9 +42,79 @@ export class UserService{
         }
     }
 
+    async signin(requestBody: signinDTO, session: Record<string, any>, req: Request, res: Response): Promise<ResponseDTO> {
+        try {
+            const user: User = await this.userModel.findOne({
+                where: { email: requestBody.email }
+            });
+    
+            if (!user) {
+                throw new HttpException('There is no user against this email address', HttpStatus.BAD_REQUEST);
+            }
+    
+            const currentlyLoggedInUserSession = await Sessions.findOne({ where: { userId: user.dataValues.id } });
+    
+            if (currentlyLoggedInUserSession && !req.cookies['connect.sid']) {
+                const sessionHasExpired = new Date() > new Date(currentlyLoggedInUserSession.dataValues.expires);
+
+                if (sessionHasExpired) {
+                    await new Promise((resolve, reject) => {
+                        req.sessionStore.destroy(currentlyLoggedInUserSession.dataValues.sid, (err: any) => {
+                            if (err) {
+                                reject(new Error('Failed to destroy session: ' + err.message));
+                            }
+                            
+                            resolve('Session destroyed');
+                        });
+                    });
+
+                    session.userId = user.id;
+                    session.lastActivity = new Date();
+
+                    return  res.json({ success: true, message: 'Login successful' }) as unknown as ResponseDTO;
+                }
+
+                if(!sessionHasExpired){
+                    const sessionData = JSON.parse(currentlyLoggedInUserSession.dataValues.data);
+
+                    (res as any).cookie('connect.sid', currentlyLoggedInUserSession.dataValues.sid, {
+                        httpOnly: true,
+                        sameSite: true,
+                        maxAge: new Date(sessionData.cookie.expires).getTime() - Date.now()
+                      });
+            
+                    return res.json({ success: true, message: 'Session updated, login successful' }) as unknown as ResponseDTO;
+                }
+            }
+    
+            const isPasswordCorrect = await User.comparePassword(requestBody.password, user.password);
+            if (!isPasswordCorrect) {
+                throw new HttpException('email or password is incorrect', HttpStatus.BAD_REQUEST);
+            }
+
+            if (currentlyLoggedInUserSession && currentlyLoggedInUserSession.dataValues.userId != req.cookies['connect.sid']['userId']) {
+                await Sessions.destroy({
+                    where: { userId: user.id },
+                });
+            }
+
+            session.userId = user.id;
+            session.lastActivity = new Date();
+
+            return  res.json({ success: true, message: 'Login successful' }) as unknown as ResponseDTO;
+    
+        } catch (err) {
+            if (err instanceof Error) {
+                throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
+            }
+    
+            throw new HttpException('An unknown error occurred', HttpStatus.BAD_REQUEST);
+        }
+    }
+    
     async updateUser(requestBody: UpdateUserDTO, userId: number): Promise<ResponseDTO> {
         try{
-            let user = await this.userModel.findByPk(userId);
+            let user: User = await this.userModel.findByPk(userId);
 
             if(!user){
                 throw new HttpException('Invalid user id, user not found', HttpStatus.BAD_REQUEST)
@@ -84,7 +157,7 @@ export class UserService{
     async deleteUser(userId: number): Promise<ResponseDTO> {
         try{
             const transaction = await this.userModel.sequelize.transaction()
-            const user = await this.userModel.findByPk(userId, { transaction });
+            const user: User = await this.userModel.findByPk(userId, { transaction });
 
             if(!user){
                 throw new HttpException('Invalid user id, user not found', HttpStatus.BAD_REQUEST)
