@@ -77,12 +77,15 @@ export class UserService{
                 if(!sessionHasExpired){
                     const sessionData = JSON.parse(currentlyLoggedInUserSession.dataValues.data);
 
-                    (res as any).cookie('connect.sid', currentlyLoggedInUserSession.dataValues.sid, {
+                    res.cookie('connect.sid', currentlyLoggedInUserSession.dataValues.sid, {
                         httpOnly: true,
                         sameSite: true,
                         maxAge: new Date(sessionData.cookie.expires).getTime() - Date.now()
                       });
-            
+                    
+                    session.userId = currentlyLoggedInUserSession.dataValues.userId;
+                    session.lastActivity = new Date();
+                    
                     return res.json({ success: true, message: 'Session updated, login successful' }) as unknown as ResponseDTO;
                 }
             }

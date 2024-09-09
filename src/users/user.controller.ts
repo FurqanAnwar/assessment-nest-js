@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Param, Delete, Session, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, Param, Delete, Session, Req, Res, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDTO } from './dto/create.dto';
 import { ResponseDTO } from './dto/response.dto';
 import { UpdateUserDTO } from './dto/update.dto';
 import { signinDTO } from './dto/signin.dto';
 import { Request, Response } from 'express'
+import { AuthGuard } from 'src/guards/auth.gurad';
 
 @Controller()
 export class UserController {
@@ -25,6 +26,7 @@ export class UserController {
     return await this.userService.signin(requestBody, session, req, res);
   }
 
+  @UseGuards(AuthGuard)
   @Post('/users/:id')
   async updateUser(@Body() requestBody: UpdateUserDTO, @Param('id') userId: number): Promise<ResponseDTO> {
     return await this.userService.updateUser(requestBody, userId)

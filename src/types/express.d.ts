@@ -11,5 +11,6 @@ declare module 'express' {
 
   export interface Response {
     json: (body?: any) => Response;
+    cookie: (name?: any, value?: any, options?: any) => Request;
   }
 }
